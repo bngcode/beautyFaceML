@@ -1,4 +1,7 @@
 import os
+
+from kerastuner import RandomSearch
+
 import methods
 import tensorflow as tf
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
@@ -24,46 +27,43 @@ if gpus:
 
 #Preprocessing data
 IMG_SIZE = 224
-training_set=[]
-training_set = methods.loadImages(IMG_SIZE)
-random.shuffle(training_set)
-methods.pickle_it(training_set, IMG_SIZE)
+EPOCHS = 100
+#training_set=[]
+#training_set = methods.loadImages(IMG_SIZE)
+#random.shuffle(training_set)
+#methods.pickle_it(training_set, IMG_SIZE)
 
 
 #Load preprocessed data
 X = pickle.load(open("X.pickle", "rb"))
 Y = pickle.load(open("Y.pickle", "rb"))
 
+#Split data, note that a test data set is missing. I have not uploaded my test data set as it contains private photos. Feel free to split the data further to create a test data set
+n = len(X)
+x_train = X[:int(n*0.8)]
+y_train = Y[:int(n*0.8)]
 
-# define the grid search parameters, feel free to edit
-batch_size = [64, 128, 128*2]
-epochsGrid = [300]
-dropoutGrid = [0.5, 0.25]
-learning_rate = [0.01, 0.001, 0.0001]
-size_histories = {}
-
-min_val_loss = 10000
-best_para = {}
-
-#Grid search, fine tuning CNN
-for dr in dropoutGrid:
-  for epochs in epochsGrid:
-    for batch in batch_size:
-      for lr in learning_rate:
-        model = methods.create_model(IMG_SIZE, lr, dr)
-        model_name = str(epochs) + '_' + str(batch) + '_' + str(lr)
-        my_callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1, mode='auto',
-    baseline=None, restore_best_weights=True)]
-        size_histories[model_name] = model.fit(X, Y, batch_size=batch, epochs=epochs, validation_split=0.1, callbacks=my_callbacks, verbose=2)
-        if min(size_histories[model_name].history['val_loss']) < min_val_loss:
-          min_val_loss = min(size_histories[model_name].history['val_loss'])
-          best_para['epoch'] = epochs
-          best_para['batch'] = batch
-          best_para['lr'] = lr
-          model.save('savedModel')
+x_val = X[int(n*0.8):]
+y_val = Y[int(n*0.8):]
 
 
+#RandomSearch
+MAX_TRIALS = 100
+EXECUTION_PER_TRIAL = 3
 
+tuner = RandomSearch(
+    methods.build_model,
+    objective='val_loss',
+    max_trials=MAX_TRIALS,
+    executions_per_trial=EXECUTION_PER_TRIAL,
+    directory='random_search',
+    project_name='beautyFaceDetection'
+)
+
+
+tuner.search(x_train, y_train,
+             epochs=EPOCHS,
+             validation_data=(x_val, y_val))
 
 
 #Make prediction with trained model

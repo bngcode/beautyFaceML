@@ -12,7 +12,7 @@ import numpy as np
 import cv2
 
 
-def create_model(IMG_SIZE, lr, dr):
+def build_model(hp):
   #Limit memore usage of GPU
   gpus = tf.config.experimental.list_physical_devices('GPU')
   if gpus:
@@ -23,16 +23,28 @@ def create_model(IMG_SIZE, lr, dr):
       print(e)
 
   model = keras.Sequential()
-  model.add(MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3), include_top=False))
+  model.add(MobileNetV2(input_shape=(224, 224, 3), include_top=False))
   model.layers[0].trainable = False
   model.add(layers.GlobalAveragePooling2D())
   model.add(layers.BatchNormalization())
-  model.add(layers.Dense(256*5, activation=tf.keras.layers.LeakyReLU(alpha=0.3)))
-  model.add(Dropout(dr))
+  model.add(layers.Dense(units=hp.Int(
+        'units',
+        min_value=128,
+        max_value=1024,
+        step=128,
+        default=512
+    ), activation=tf.keras.layers.LeakyReLU(alpha=0.3)))
+  model.add(Dropout(rate=hp.Float(
+                'dropout',
+                min_value=0.25,
+                max_value=0.75,
+                default=0.25,
+                step=0.25,
+            )))
   model.add(layers.Dense(1, activation=tf.keras.layers.LeakyReLU(alpha=0.3)))
-  adam = tf.keras.optimizers.Adam(learning_rate=lr, beta_1=0.9, beta_2=0.98,
+  adam = tf.keras.optimizers.Adam(hp.Choice('learning_rate',
+                      values=[1e-2, 1e-3, 1e-4]), beta_1=0.9, beta_2=0.98,
                                        epsilon=1e-9)
-  sgd = tf.keras.optimizers.SGD(lr=lr, decay=1e-6, momentum=0.5)
   model.compile(optimizer=adam,
                 loss=tf.keras.losses.mean_squared_error)
 
@@ -64,7 +76,7 @@ def loadImages(IMG_SIZE):
 def getLabelMap():
   map = {}
   path = os.getcwd()
-  path = os.path.join(path, "data\\train_test_files\\All_labels.txt")
+  path = os.path.join(path, "data\\All_labels.txt")
   f = open(path, "r")
   for line in f:
     line = line.split()
