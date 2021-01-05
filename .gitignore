@@ -1,3 +1,5 @@
 # Created by .ignore support plugin (hsz.mobi)
 /data/
 /savedModel/
+/X.pickle
+/Y.pickle

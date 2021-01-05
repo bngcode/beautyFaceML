@@ -1,14 +1,14 @@
 import os
-
 from kerastuner import RandomSearch
-
 import methods
 import tensorflow as tf
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 import pickle
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import random
 
 
+#Configs for GPU
 config = tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True))
 config.gpu_options.allow_growth = True
 sess = tf.compat.v1.Session(config=config)
@@ -25,14 +25,16 @@ if gpus:
     print(e)
 
 
-#Preprocessing data
+
 IMG_SIZE = 224
 EPOCHS = 100
 BS = 64
-#training_set=[]
-#training_set = methods.loadImages(IMG_SIZE)
-#random.shuffle(training_set)
-#methods.pickle_it(training_set, IMG_SIZE)
+
+#Load images and pickle it
+training_set=[]
+training_set = methods.loadImages(IMG_SIZE)
+random.shuffle(training_set)
+methods.pickle_it(training_set, IMG_SIZE)
 
 
 #Load preprocessed data
